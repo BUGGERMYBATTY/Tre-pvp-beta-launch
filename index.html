@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF--8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRUEPVP.io</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Inter"', 'sans-serif'],
+              display: ['"Orbitron"', 'sans-serif'],
+            },
+            colors: {
+              'brand-dark': '#0D0E18',
+              'brand-gray': '#1A1B2E',
+              'blue': {
+                'light': '#7DF9FF',
+                'DEFAULT': '#00BFFF',
+                'dark': '#008C9E',
+              },
+              'pink': {
+                'light': '#FF7ED4',
+                'DEFAULT': '#FF1493',
+                'dark': '#C2007B',
+              },
+              'yellow': {
+                'light': '#FFF700',
+                'DEFAULT': '#FFD700',
+                'dark': '#E0B400',
+              },
+              'violet': {
+                'light': '#C792EA',
+                'DEFAULT': '#9B59B6',
+                'dark': '#6A1B9A',
+              },
+            },
+            keyframes: {
+              pulseGlow: {
+                '0%, 100%': { boxShadow: '0 0 15px 5px rgba(0, 191, 255, 0.4)' },
+                '50%': { boxShadow: '0 0 30px 15px rgba(0, 191, 255, 0.7)' },
+              },
+               pulseGlowYellow: {
+                '0%, 100%': { boxShadow: '0 0 15px 5px rgba(255, 215, 0, 0.4)' },
+                '50%': { boxShadow: '0 0 30px 15px rgba(255, 215, 0, 0.7)' },
+              },
+              pulseGlowViolet: {
+                '0%, 100%': { boxShadow: '0 0 15px 5px rgba(155, 89, 182, 0.4)' },
+                '50%': { boxShadow: '0 0 30px 15px rgba(155, 89, 182, 0.7)' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'scale(0.95)' },
+                '100%': { opacity: '1', transform: 'scale(1)' },
+              },
+              'psychedelic-bg': {
+                '0%, 100%': { backgroundPosition: '0% 50%' },
+                '50%': { backgroundPosition: '100% 50%' },
+              },
+              lineClear: {
+                '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+                '50%': { transform: 'scale(1.1)', opacity: '0.5', backgroundColor: '#ffffff' },
+              }
+            },
+            animation: {
+              pulseGlow: 'pulseGlow 2s ease-in-out infinite',
+              pulseGlowYellow: 'pulseGlowYellow 2s ease-in-out infinite',
+              pulseGlowViolet: 'pulseGlowViolet 2s ease-in-out infinite',
+              fadeIn: 'fadeIn 0.5s ease-out forwards',
+              'psychedelic-bg': 'psychedelic-bg 6s ease-in-out infinite',
+              lineClear: 'lineClear 0.3s ease-out forwards',
+            }
+          }
+        }
+      }
+    </script>
+    <!-- Load Solana libraries globally -->
+    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.js"></script>
+    <script src="https://unpkg.com/@coral-xyz/anchor@0.29.0/dist/browser/anchor.min.js"></script>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "react/": "https://esm.sh/react@18.3.1/",
+    "buffer": "https://esm.sh/buffer@6.0.3"
+  }
+}
+</script>
+    <style>
+      body {
+        background-color: #0D0E18;
+        background-image:
+          linear-gradient(rgba(0, 191, 255, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 191, 255, 0.07) 1px, transparent 1px);
+        background-size: 50px 50px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
