@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import BettingScreen from '../components/BettingScreen.tsx';
+import MatchmakingLobby from '../components/MatchmakingLobby.tsx';
 import ViperPitGameScreen from '../components/ViperPitGameScreen.tsx';
 import WinnerScreen from '../components/WinnerScreen.tsx';
 import HowToPlayModal from '../components/HowToPlayModal.tsx';
 import { Screen, GameType, PublicKey } from '../types.ts';
-import { findOpenGame, createGameOnChain, joinGameOnChain, reportWinnerOnChain, getGameState } from '../program-client.ts';
 
 const { Keypair } = (window as any).solanaWeb3;
 
@@ -21,7 +20,7 @@ interface ViperPitProps {
 }
 
 const ViperPit: React.FC<ViperPitProps> = ({ onExit, provider, connection, balance, onRefreshBalance, onSetBalance, isGuest, nickname, opponentNickname }) => {
-  const [screen, setScreen] = useState<Screen>(Screen.Betting);
+  const [screen, setScreen] = useState<Screen>(Screen.Matchmaking);
   const [betAmount, setBetAmount] = useState(0.1);
   const [winnerId, setWinnerId] = useState<number | null>(null);
   const [forfeited, setForfeited] = useState(false);
@@ -29,33 +28,25 @@ const ViperPit: React.FC<ViperPitProps> = ({ onExit, provider, connection, balan
   const [gamePubkey, setGamePubkey] = useState<PublicKey | null>(null);
   const [message, setMessage] = useState('');
 
-  // This effect is now disabled as guests don't need real-time on-chain updates.
-  // useEffect(() => { ... });
-
-  const handleFindOpponent = async (amount: number) => {
+  // This component doesn't use the waiting/matchmaking flow yet as it's disabled,
+  // but the handlers are here for future implementation.
+  const handleMatchCreated = (newGamePubkey: PublicKey | null, amount: number) => {
     setBetAmount(amount);
-    setScreen(Screen.Waiting);
-
     if (isGuest) {
-        const totalCost = amount + (amount * 0.015);
-        if (balance < totalCost) {
-            alert("You don't have enough pretend SOL!");
-            setScreen(Screen.Betting);
-            return;
-        }
-        onSetBalance(balance - totalCost);
-        setMessage('Searching for another guest...');
-        // Simulate finding an opponent
-        setTimeout(() => {
-          setMessage('Opponent found! Starting match...');
-          setGamePubkey(Keypair.generate().publicKey); // Dummy pubkey for guest game
-          setTimeout(() => setScreen(Screen.Game), 1500);
-        }, 3000);
-        return;
+        onSetBalance(balance - (amount + amount * 0.015));
+        setGamePubkey(Keypair.generate().publicKey);
+        setScreen(Screen.Game);
+    } else {
+        setMessage('This feature is coming soon!');
+        setTimeout(() => setScreen(Screen.Matchmaking), 2000);
     }
+  };
 
+  const handleMatchJoined = (joinedGamePubkey: PublicKey, amount: number) => {
+    setBetAmount(amount);
+    setGamePubkey(joinedGamePubkey);
     setMessage('This feature is coming soon!');
-    setTimeout(() => setScreen(Screen.Betting), 2000);
+    setTimeout(() => setScreen(Screen.Matchmaking), 2000);
   };
 
   const handleGameOver = async (winner: number | null) => {
@@ -76,7 +67,7 @@ const ViperPit: React.FC<ViperPitProps> = ({ onExit, provider, connection, balan
   };
 
   const handlePlayAgain = () => {
-    setScreen(Screen.Betting);
+    setScreen(Screen.Matchmaking);
     setWinnerId(null);
     setForfeited(false);
     setGamePubkey(null);
@@ -84,16 +75,21 @@ const ViperPit: React.FC<ViperPitProps> = ({ onExit, provider, connection, balan
   
   const renderContent = () => {
     switch (screen) {
-      case Screen.Betting:
+      case Screen.Matchmaking:
         return (
-          <BettingScreen
-            onFindOpponent={handleFindOpponent}
+          <MatchmakingLobby
+            onMatchCreated={handleMatchCreated}
+            onMatchJoined={handleMatchJoined}
             onCancel={onExit}
+            onShowHowToPlay={() => setShowHowToPlay(true)}
             gameTitle="Cosmic Dodge"
             gameColor="pink"
+            gameType={GameType.ViperPit}
             balance={balance}
-            onShowHowToPlay={() => setShowHowToPlay(true)}
             isGuest={isGuest}
+            provider={provider}
+            connection={connection}
+            nickname={nickname}
           />
         );
       case Screen.Waiting:
@@ -130,7 +126,7 @@ const ViperPit: React.FC<ViperPitProps> = ({ onExit, provider, connection, balan
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 relative">
-       {screen !== Screen.Betting && (
+       {screen !== Screen.Matchmaking && (
         <div className="absolute top-4 left-4">
           <button onClick={onExit} className="text-gray-300 hover:text-white transition-colors">&larr; Back to Lobby</button>
         </div>

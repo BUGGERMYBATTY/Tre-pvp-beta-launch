@@ -175,7 +175,7 @@ const App: React.FC = () => {
         <div className="bg-brand-dark min-h-screen text-brand-light font-sans flex flex-col items-center p-4 sm:p-6">
             {showNicknameModal && <NicknameModal onSetNickname={handleSetNickname} />}
             <div className="fixed top-0 left-0 w-full h-24 bg-gradient-to-b from-brand-dark to-transparent z-10 pointer-events-none"></div>
-            <header className="w-full max-w-7xl flex justify-between items-center mb-12 z-20">
+            <header className="w-full max-w-7xl flex justify-between items-center mb-12 z-30">
                 <div className="flex items-center gap-3">
                     <h1 className="text-3xl sm:text-4xl font-bold font-display tracking-wider bg-gradient-to-r from-blue-light to-violet-light bg-clip-text text-transparent cursor-pointer" style={{ textShadow: '0 0 10px rgba(0, 191, 255, 0.5)' }} onClick={() => { setSelectedGame(null); setPage('games'); }}>
                         TRUEPVP

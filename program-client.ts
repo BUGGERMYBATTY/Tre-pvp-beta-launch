@@ -1,12 +1,15 @@
 // FIX: Import Buffer to make it available for the compiler.
 import { Buffer } from 'buffer';
 import { IDL, TruepvpBackend } from './truepvp_backend.ts';
+// FIX: Removed PublicKey from this import. The PublicKey value from solanaWeb3 will be used for both type and value, resolving the conflict.
 import { GameState, OnChainGameState, GameType } from './types.ts';
+import type { PublicKey as PublicKeyType } from './types.ts';
 
 // Get Solana Web3 from the global scope. This is safe because it loads first.
 const solanaWeb3 = (window as any).solanaWeb3;
 const Connection: typeof solanaWeb3.Connection = solanaWeb3.Connection;
-const PublicKey: typeof solanaWeb3.PublicKey = solanaWeb3.PublicKey;
+// FIX: Destructure PublicKey from solanaWeb3. This allows it to be used as a value (for new PublicKey) and a type. This fixes all related errors.
+const { PublicKey } = solanaWeb3;
 const SystemProgram: typeof solanaWeb3.SystemProgram = solanaWeb3.SystemProgram;
 const { LAMPORTS_PER_SOL } = solanaWeb3;
 
@@ -44,28 +47,26 @@ const parseOnChainState = (onChainState: OnChainGameState): GameState => {
 
 // --- CORE MATCHMAKING FUNCTIONS ---
 
-export const findOpenGame = async (connection: any, provider: any, wagerAmount: number, gameType: GameType): Promise<typeof PublicKey | null> => {
-    const anchor = (window as any).anchor;
-    const { BN } = anchor;
+export const getOpenGames = async (connection: any, provider: any, gameType: GameType): Promise<{ publicKey: PublicKeyType, account: GameState }[]> => {
     const program = getProgram(connection, provider);
-    const lamports = new BN(wagerAmount * LAMPORTS_PER_SOL);
 
-    const openGames = await program.account.gameState.all([
+    const openGamesOnChain = await program.account.gameState.all([
         { memcmp: { offset: 8 + 1 + 32, bytes: new PublicKey(0).toBase58() } }, // Player 2 is default/empty
-        { memcmp: { offset: 8 + 1 + 32 + 32, bytes: lamports.toBuffer('le', 8) } }, // Match wager amount
         { memcmp: { offset: 8, bytes: Buffer.from([gameType]) } }, // Match game type
     ]);
     
     // Filter out games created by the current player
-    const validOpenGames = openGames.filter(game => game.account.players[0].toBase58() !== provider.publicKey.toBase58());
+    const validOpenGames = openGamesOnChain.filter(game => 
+        provider?.publicKey ? game.account.players[0].toBase58() !== provider.publicKey.toBase58() : true
+    );
 
-    if (validOpenGames.length > 0) {
-        return validOpenGames[0].publicKey; // Return the public key of the first available game
-    }
-    return null;
+    return validOpenGames.map(game => ({
+        publicKey: game.publicKey,
+        account: parseOnChainState(game.account as unknown as OnChainGameState)
+    }));
 };
 
-export const createGameOnChain = async (connection: any, provider: any, wagerAmount: number, gameType: GameType): Promise<typeof PublicKey> => {
+export const createGameOnChain = async (connection: any, provider: any, wagerAmount: number, gameType: GameType): Promise<PublicKeyType> => {
   const anchor = (window as any).anchor;
   const { BN } = anchor;
   const program = getProgram(connection, provider);
@@ -97,10 +98,17 @@ export const joinGameOnChain = async (connection: any, provider: any, gamePubkey
         .rpc();
 };
 
+// FIX: Added missing findOpenGame function.
+export const findOpenGame = async (connection: any, provider: any, wagerAmount: number, gameType: GameType): Promise<PublicKeyType | null> => {
+    const openGames = await getOpenGames(connection, provider, gameType);
+    const matchingGame = openGames.find(game => game.account.wagerAmount === wagerAmount);
+    return matchingGame ? matchingGame.publicKey : null;
+};
+
 
 // --- GAME-SPECIFIC FUNCTIONS ---
 
-export const getGameState = async (connection: any, gamePubkey: typeof PublicKey): Promise<GameState> => {
+export const getGameState = async (connection: any, gamePubkey: PublicKeyType): Promise<GameState> => {
   const anchor = (window as any).anchor;
   const { Program, AnchorProvider } = anchor;
   // Create a read-only provider since we don't need a signer to fetch data.
@@ -111,7 +119,7 @@ export const getGameState = async (connection: any, gamePubkey: typeof PublicKey
   return parseOnChainState(onChainState as unknown as OnChainGameState);
 };
 
-export const playRoundOnChain = async (connection: any, provider: any, gamePubkey: typeof PublicKey, round: number, choice: number): Promise<void> => {
+export const playRoundOnChain = async (connection: any, provider: any, gamePubkey: PublicKeyType, round: number, choice: number): Promise<void> => {
   const program = getProgram(connection, provider);
   await program.methods
     .play(round, choice)
@@ -122,7 +130,7 @@ export const playRoundOnChain = async (connection: any, provider: any, gamePubke
     .rpc();
 };
 
-export const resolveGameGoldRushOnChain = async (connection: any, provider: any, gamePubkey: typeof PublicKey, playerOne: typeof PublicKey, playerTwo: typeof PublicKey): Promise<void> => {
+export const resolveGameGoldRushOnChain = async (connection: any, provider: any, gamePubkey: PublicKeyType, playerOne: PublicKeyType, playerTwo: PublicKeyType): Promise<void> => {
     const program = getProgram(connection, provider);
     await program.methods
         .resolveGameGoldRush()
@@ -135,7 +143,7 @@ export const resolveGameGoldRushOnChain = async (connection: any, provider: any,
         .rpc();
 };
 
-export const reportWinnerOnChain = async (connection: any, provider: any, gamePubkey: typeof PublicKey, winnerPk: typeof PublicKey): Promise<void> => {
+export const reportWinnerOnChain = async (connection: any, provider: any, gamePubkey: PublicKeyType, winnerPk: PublicKeyType): Promise<void> => {
     const program = getProgram(connection, provider);
     const state = await getGameState(connection, gamePubkey);
     const playerOne = new PublicKey(state.players[0]);

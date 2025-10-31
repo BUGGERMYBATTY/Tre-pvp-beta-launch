@@ -12,6 +12,8 @@ interface HexCaptureGameScreenProps {
   connection: any;
   isGuest: boolean;
   onForfeit: () => void;
+  nickname: string;
+  opponentNickname: string;
 }
 
 // --- Hex Grid Constants & Logic ---
@@ -25,7 +27,7 @@ const ADJACENCY_MAP: { [key: number]: number[] } = {
     15: [8, 9, 14, 16], 16: [9, 10, 15, 17], 17: [10, 11, 16, 18], 18: [12, 17]
 };
 
-const HexCaptureGameScreen: React.FC<HexCaptureGameScreenProps> = ({ onGameOver, betAmount, gamePubkey, provider, connection, isGuest, onForfeit }) => {
+const HexCaptureGameScreen: React.FC<HexCaptureGameScreenProps> = ({ onGameOver, betAmount, gamePubkey, provider, connection, isGuest, onForfeit, nickname, opponentNickname }) => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [message, setMessage] = useState('Loading game...');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -158,7 +160,7 @@ const HexCaptureGameScreen: React.FC<HexCaptureGameScreenProps> = ({ onGameOver,
     <div className="w-full h-full flex flex-col justify-center items-center p-4 animate-fadeIn">
       <div className="w-full max-w-lg flex justify-between items-center mb-4">
         <div className="text-center">
-            <h3 className="text-2xl font-bold font-display">You</h3>
+            <h3 className="text-2xl font-bold font-display">{nickname}</h3>
             <p className={`text-xl text-${p1Color}`}>{isPlayerOne ? p1Hexes.length : p2Hexes.length} / 10</p>
         </div>
         <div className="text-center">
@@ -166,7 +168,7 @@ const HexCaptureGameScreen: React.FC<HexCaptureGameScreenProps> = ({ onGameOver,
             <p className="text-2xl font-bold text-green-light">{(betAmount * 2).toFixed(2)} SOL</p>
         </div>
         <div className="text-center">
-            <h3 className="text-2xl font-bold font-display">Opponent</h3>
+            <h3 className="text-2xl font-bold font-display">{opponentNickname}</h3>
             <p className={`text-xl text-${p2Color}`}>{isPlayerOne ? p2Hexes.length : p1Hexes.length} / 10</p>
         </div>
       </div>

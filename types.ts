@@ -9,10 +9,12 @@ export type PublicKey = InstanceType<typeof solanaWeb3.PublicKey>;
  * Represents the different screens a user can be on within a game flow.
  */
 export enum Screen {
-  Betting,
+  Matchmaking,
   Game,
   Winner,
   Waiting,
+  // FIX: Added 'Betting' to the Screen enum for HexCapture game flow.
+  Betting,
 }
 
 /**

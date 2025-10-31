@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import BettingScreen from '../components/BettingScreen.tsx';
+import MatchmakingLobby from '../components/MatchmakingLobby.tsx';
 import HexCaptureGameScreen from '../components/HexCaptureGameScreen.tsx';
 import WinnerScreen from '../components/WinnerScreen.tsx';
 import HowToPlayModal from '../components/HowToPlayModal.tsx';
 import { Screen, GameType, PublicKey } from '../types.ts';
-import { findOpenGame, createGameOnChain, joinGameOnChain, reportWinnerOnChain, getGameState } from '../program-client.ts';
+import { getOpenGames, createGameOnChain, joinGameOnChain, reportWinnerOnChain, getGameState } from '../program-client.ts';
 
 const { Keypair } = (window as any).solanaWeb3;
 
@@ -16,10 +16,12 @@ interface HexCaptureProps {
   onRefreshBalance: () => void;
   onSetBalance: (newBalance: number) => void;
   isGuest: boolean;
+  nickname: string;
+  opponentNickname: string;
 }
 
-const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, balance, onRefreshBalance, onSetBalance, isGuest }) => {
-  const [screen, setScreen] = useState<Screen>(Screen.Betting);
+const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, balance, onRefreshBalance, onSetBalance, isGuest, nickname, opponentNickname }) => {
+  const [screen, setScreen] = useState<Screen>(Screen.Matchmaking);
   const [betAmount, setBetAmount] = useState(0.1);
   const [winnerId, setWinnerId] = useState<number | null>(null);
   const [forfeited, setForfeited] = useState(false);
@@ -49,15 +51,13 @@ const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, b
     }
   }, [screen, gamePubkey, connection, isGuest]);
 
-  const handleFindOpponent = async (amount: number) => {
+  const handleMatchCreated = (newGamePubkey: PublicKey | null, amount: number) => {
     setBetAmount(amount);
-    setScreen(Screen.Waiting);
-
     if (isGuest) {
         const totalCost = amount + (amount * 0.015);
         if (balance < totalCost) {
             alert("You don't have enough pretend SOL!");
-            setScreen(Screen.Betting);
+            setScreen(Screen.Matchmaking);
             return;
         }
         onSetBalance(balance - totalCost);
@@ -67,27 +67,16 @@ const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, b
         return;
     }
 
-    setMessage('Searching for an open match...');
-    try {
-      const openGamePubkey = await findOpenGame(connection, provider, amount, GameType.HexCapture);
-      if (openGamePubkey) {
-        setMessage('Open match found! Joining game...');
-        await joinGameOnChain(connection, provider, openGamePubkey);
-        await onRefreshBalance();
-        setGamePubkey(openGamePubkey);
-        setScreen(Screen.Game);
-      } else {
-        setMessage('No open matches found. Creating a new one...');
-        const newGamePubkey = await createGameOnChain(connection, provider, amount, GameType.HexCapture);
-        await onRefreshBalance();
-        setGamePubkey(newGamePubkey);
-        setMessage('Game created! Waiting for an opponent...');
-      }
-    } catch (error) {
-      console.error("Matchmaking failed:", error);
-      setMessage('Matchmaking failed! Please try again.');
-      setScreen(Screen.Betting);
-    }
+    setMessage('Creating a new match...');
+    setGamePubkey(newGamePubkey);
+    setMessage('Game created! Waiting for an opponent...');
+    setScreen(Screen.Waiting);
+  };
+
+  const handleMatchJoined = async (joinedGamePubkey: PublicKey, amount: number) => {
+      setBetAmount(amount);
+      setGamePubkey(joinedGamePubkey);
+      setScreen(Screen.Game);
   };
 
   const handleGameOver = async (winner: number | null) => {
@@ -127,7 +116,7 @@ const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, b
   };
 
   const handlePlayAgain = () => {
-    setScreen(Screen.Betting);
+    setScreen(Screen.Matchmaking);
     setWinnerId(null);
     setForfeited(false);
     setGamePubkey(null);
@@ -135,16 +124,21 @@ const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, b
 
   const renderContent = () => {
     switch (screen) {
-      // FIX: Replace incorrect object spread with standard prop passing and correct handler names.
-      case Screen.Betting:
-        return <BettingScreen
-          onFindOpponent={handleFindOpponent}
+      // FIX: Replace BettingScreen with MatchmakingLobby and adjust props.
+      case Screen.Matchmaking:
+        return <MatchmakingLobby
+          onMatchCreated={handleMatchCreated}
+          onMatchJoined={handleMatchJoined}
           onCancel={onExit}
           gameTitle="Hex Capture"
           gameColor="green"
           balance={balance}
           onShowHowToPlay={() => setShowHowToPlay(true)}
           isGuest={isGuest}
+          gameType={GameType.HexCapture}
+          provider={provider}
+          connection={connection}
+          nickname={nickname}
         />;
       case Screen.Waiting:
         return (
@@ -153,7 +147,6 @@ const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, b
             <p className="text-xl font-display text-green">{message}</p>
           </div>
         );
-      // FIX: Replace incorrect object spread with standard prop passing and correct handler names.
       case Screen.Game:
         return <HexCaptureGameScreen
           onGameOver={handleGameOver}
@@ -163,8 +156,9 @@ const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, b
           provider={provider}
           connection={connection}
           isGuest={isGuest}
+          nickname={nickname}
+          opponentNickname={opponentNickname}
         />;
-      // FIX: Replace incorrect object spread with standard prop passing and correct handler names.
       case Screen.Winner:
         return <WinnerScreen
           winnerId={winnerId}
@@ -180,7 +174,7 @@ const HexCapture: React.FC<HexCaptureProps> = ({ onExit, provider, connection, b
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 relative">
-      {screen !== Screen.Betting && (
+      {screen !== Screen.Matchmaking && (
         <div className="absolute top-4 left-4">
           <button onClick={onExit} className="text-gray-300 hover:text-white transition-colors">&larr; Back to Lobby</button>
         </div>

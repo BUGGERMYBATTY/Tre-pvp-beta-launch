@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import BettingScreen from '../components/BettingScreen.tsx';
+import MatchmakingLobby from '../components/MatchmakingLobby.tsx';
 import GameScreen from '../components/GameScreen.tsx';
 import WinnerScreen from '../components/WinnerScreen.tsx';
 import HowToPlayModal from '../components/HowToPlayModal.tsx';
 import { Screen, GameType, PublicKey } from '../types.ts';
-import { findOpenGame, createGameOnChain, joinGameOnChain, getGameState } from '../program-client.ts';
+import { getGameState } from '../program-client.ts';
 
 const { Keypair } = (window as any).solanaWeb3;
 
@@ -21,7 +21,7 @@ interface SolanaGoldRushProps {
 }
 
 const SolanaGoldRush: React.FC<SolanaGoldRushProps> = ({ onExit, provider, connection, balance, onRefreshBalance, isGuest, onSetBalance, nickname, opponentNickname }) => {
-  const [screen, setScreen] = useState<Screen>(Screen.Betting);
+  const [screen, setScreen] = useState<Screen>(Screen.Matchmaking);
   const [betAmount, setBetAmount] = useState(0.1);
   const [winnerId, setWinnerId] = useState<number | null>(null);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
@@ -29,34 +29,48 @@ const SolanaGoldRush: React.FC<SolanaGoldRushProps> = ({ onExit, provider, conne
   const [message, setMessage] = useState('');
   const [forfeited, setForfeited] = useState(false);
   
-  // This effect is now disabled as guests don't need real-time on-chain updates.
-  // useEffect(() => { ... });
+  // WebSocket listener for when a player creates a game and is waiting for an opponent.
+  useEffect(() => {
+    if (!isGuest && screen === Screen.Waiting && gamePubkey && connection) {
+      setMessage('Game created! Waiting for an opponent...');
+      const subscriptionId = connection.onAccountChange(
+        gamePubkey,
+        async () => {
+          try {
+            const state = await getGameState(connection, gamePubkey);
+            // Check if player 2 has joined (is not the default empty public key)
+            if (state && state.players[1] !== new (window as any).solanaWeb3.PublicKey(0).toBase58()) {
+              console.log("Opponent joined! Starting game.");
+              setMessage('Opponent found! Starting match...');
+              setTimeout(() => setScreen(Screen.Game), 1500);
+            }
+          } catch (e) { console.error("Error checking game state for opponent:", e); }
+        },
+        'confirmed'
+      );
+      return () => {
+        connection.removeAccountChangeListener(subscriptionId).catch((err: any) => console.error("Failed to remove listener:", err));
+      };
+    }
+  }, [screen, gamePubkey, connection, isGuest]);
 
-  const handleFindOpponent = async (amount: number) => {
+  const handleMatchCreated = (newGamePubkey: PublicKey | null, amount: number) => {
     setBetAmount(amount);
-    setScreen(Screen.Waiting);
-    
     if (isGuest) {
       const totalCost = amount + (amount * 0.015);
-      if (balance < totalCost) {
-          alert("You don't have enough pretend SOL!");
-          setScreen(Screen.Betting);
-          return;
-      }
       onSetBalance(balance - totalCost);
-      setMessage('Searching for another guest...');
-      // Simulate finding an opponent
-      setTimeout(() => {
-        setMessage('Opponent found! Starting match...');
-        setGamePubkey(Keypair.generate().publicKey); // Dummy pubkey for guest game
-        setTimeout(() => setScreen(Screen.Game), 1500);
-      }, 3000);
-      return;
+      setGamePubkey(Keypair.generate().publicKey); // Dummy pubkey for guest game
+      setScreen(Screen.Game);
+    } else {
+      setGamePubkey(newGamePubkey);
+      setScreen(Screen.Waiting);
     }
-    
-    // Logic for real players (currently disabled but kept for future use)
-    setMessage('This feature is coming soon!');
-    setTimeout(() => setScreen(Screen.Betting), 2000);
+  };
+
+  const handleMatchJoined = (joinedGamePubkey: PublicKey, amount: number) => {
+    setBetAmount(amount);
+    setGamePubkey(joinedGamePubkey);
+    setScreen(Screen.Game);
   };
 
   const handleGameOver = (winner: number | null) => {
@@ -77,7 +91,7 @@ const SolanaGoldRush: React.FC<SolanaGoldRushProps> = ({ onExit, provider, conne
   };
 
   const handlePlayAgain = () => {
-    setScreen(Screen.Betting);
+    setScreen(Screen.Matchmaking);
     setWinnerId(null);
     setGamePubkey(null);
     setForfeited(false);
@@ -85,16 +99,21 @@ const SolanaGoldRush: React.FC<SolanaGoldRushProps> = ({ onExit, provider, conne
   
   const renderContent = () => {
     switch (screen) {
-      case Screen.Betting:
+      case Screen.Matchmaking:
         return (
-          <BettingScreen
-            onFindOpponent={handleFindOpponent}
+          <MatchmakingLobby
+            onMatchCreated={handleMatchCreated}
+            onMatchJoined={handleMatchJoined}
             onCancel={onExit}
+            onShowHowToPlay={() => setShowHowToPlay(true)}
             gameTitle="Gold Rush"
             gameColor="yellow"
+            gameType={GameType.GoldRush}
             balance={balance}
-            onShowHowToPlay={() => setShowHowToPlay(true)}
             isGuest={isGuest}
+            provider={provider}
+            connection={connection}
+            nickname={nickname}
           />
         );
        case Screen.Waiting:
@@ -135,7 +154,7 @@ const SolanaGoldRush: React.FC<SolanaGoldRushProps> = ({ onExit, provider, conne
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-4 relative">
-      {screen !== Screen.Betting && (
+      {screen !== Screen.Matchmaking && (
         <div className="absolute top-4 left-4">
           <button onClick={onExit} className="text-gray-300 hover:text-white transition-colors">&larr; Back to Lobby</button>
         </div>

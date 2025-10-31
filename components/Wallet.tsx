@@ -128,12 +128,10 @@ const Wallet: React.FC<WalletProps> = ({ provider, setProvider, balance, refresh
                     >
                         <h2 id="connect-wallet-title" className="text-3xl font-bold font-display text-center mb-8 text-white">Connect a Wallet</h2>
                         <div className="flex flex-col gap-4">
-                            <button onClick={handleConnectPhantom} className="w-full bg-[#512da8]/80 text-white font-bold py-4 px-6 rounded-lg text-lg hover:bg-[#512da8] transition-colors border border-violet-light/50 flex items-center justify-center gap-3">
-                                <img src="https://phantom.app/img/logo.png" alt="Phantom Wallet" className="w-7 h-7" />
+                            <button onClick={handleConnectPhantom} className="w-full bg-[#512da8]/80 text-white font-bold py-4 px-6 rounded-lg text-lg hover:bg-[#512da8] transition-colors border border-violet-light/50">
                                 Phantom
                             </button>
-                            <button onClick={handleConnectSolflare} className="w-full bg-brand-gray/70 text-white font-bold py-4 px-6 rounded-lg text-lg hover:bg-brand-gray border-2 border-gray-700 hover:border-gray-500 transition-colors flex items-center justify-center gap-3">
-                                <img src="https://solflare.com/favicon.ico" alt="Solflare Wallet" className="w-7 h-7" />
+                            <button onClick={handleConnectSolflare} className="w-full bg-brand-gray/70 text-white font-bold py-4 px-6 rounded-lg text-lg hover:bg-brand-gray border-2 border-gray-700 hover:border-gray-500 transition-colors">
                                 Solflare
                             </button>
                         </div>
