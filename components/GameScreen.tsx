@@ -14,9 +14,11 @@ interface GameScreenProps {
   connection: any;
   isGuest: boolean;
   onForfeit: () => void;
+  nickname: string;
+  opponentNickname: string;
 }
 
-const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, betAmount, gamePubkey, provider, connection, isGuest, onForfeit }) => {
+const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, betAmount, gamePubkey, provider, connection, isGuest, onForfeit, nickname, opponentNickname }) => {
   const [onChainState, setOnChainState] = useState<GameState | null>(null);
   const [localMessage, setLocalMessage] = useState('Loading game state...');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -266,6 +268,22 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, betAmount, gamePubk
 
   }, [onChainState, currentRound, isPlayerOne, connection, provider, gamePubkey, onGameOver, playerPubkey, isGuest, roundResult, isProcessing]);
 
+  // Handle disconnection as a forfeit
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      // This is primarily for guest mode, as on-chain transactions in beforeunload are unreliable.
+      // For real games, an on-chain timeout mechanism would be more robust.
+      onForfeit();
+      // Most browsers will show a generic message and not this custom one.
+      event.returnValue = 'Are you sure you want to leave? Leaving will forfeit the match.';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [onForfeit]);
 
   if (!onChainState) {
     return <div className="text-center"><p className="text-2xl font-display">{localMessage}</p></div>;
@@ -287,88 +305,109 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, betAmount, gamePubk
   };
   
   const myScore = calculateScore(onChainState.playerOneChoices, onChainState.playerTwoChoices, onChainState.roundNumbers);
+  // FIX: Corrected typo from `twoPlayerChoices` to `playerTwoChoices`.
   const opponentScore = calculateScore(onChainState.playerTwoChoices, onChainState.playerOneChoices, onChainState.roundNumbers);
 
   const myChoiceThisRound = onChainState.playerOneChoices[currentRound];
   const opponentChoiceThisRound = onChainState.playerTwoChoices[currentRound];
   
-  let scaleTiltClass = 'rotate-0';
-  if (roundResult === 'player') {
-      scaleTiltClass = '-rotate-[10deg]';
-  } else if (roundResult === 'opponent') {
-      scaleTiltClass = 'rotate-[10deg]';
-  }
+  const jackpotValue = (currentRound !== -1 && currentRound < onChainState.roundNumbers.length) ? onChainState.roundNumbers[currentRound] : '-';
 
   return (
-    <div className="w-full h-full flex flex-col justify-between items-center p-4 animate-fadeIn">
-       <div className="w-full flex justify-between">
-            <div className={`flex flex-col w-48 items-start`}>
-                <h3 className="text-2xl font-bold font-display">You</h3>
-                <p className={`text-xl text-yellow`}>Score: {myScore}</p>
+    <div className="w-full h-full flex flex-col justify-between items-center p-4 animate-fadeIn max-w-4xl mx-auto">
+       {/* Player HUD */}
+       <div className="w-full grid grid-cols-3 items-center gap-4 mb-6">
+            <div className={`flex flex-col items-start p-4 bg-glassmorphism border border-blue/50 rounded-lg`}>
+                <h3 className="text-xl sm:text-2xl font-bold font-display text-blue-light truncate">{nickname}</h3>
+                <p className={`text-lg sm:text-xl text-white`}>Score: {myScore}</p>
             </div>
             <div className="text-center">
-                <h4 className="text-lg font-display text-gray-300">Total Pot</h4>
-                <p className="text-2xl font-bold text-yellow-light">{(betAmount * 2).toFixed(4)} SOL</p>
+                <h4 className="text-base sm:text-lg font-display text-gray-300">Total Pot</h4>
+                <p className="text-xl sm:text-3xl font-bold text-yellow-light">{(betAmount * 2).toFixed(4)} SOL</p>
             </div>
-             <div className={`flex flex-col w-48 items-end`}>
-                <h3 className="text-2xl font-bold font-display">Opponent</h3>
-                <p className={`text-xl text-pink`}>Score: {opponentScore}</p>
+             <div className={`flex flex-col items-end p-4 bg-glassmorphism border border-pink/50 rounded-lg`}>
+                <h3 className="text-xl sm:text-2xl font-bold font-display text-pink-light truncate">{opponentNickname}</h3>
+                <p className={`text-lg sm:text-xl text-white`}>Score: {opponentScore}</p>
             </div>
       </div>
       
-      {/* --- The Scale --- */}
-      <div className="flex flex-col items-center justify-center flex-grow w-full max-w-xl">
+      {/* --- The Digital Scale --- */}
+      <div className="flex flex-col items-center justify-center flex-grow w-full">
         {timer !== null && myChoiceThisRound === 0 && (
-          <div className="mb-2 text-4xl font-mono font-bold text-yellow-light">
+          <div className="mb-2 text-5xl font-mono font-bold text-yellow-light">
             {timer}
           </div>
         )}
-        <p className="text-2xl h-8 mb-6 font-display tracking-wide">{localMessage}</p>
-        <div className="relative w-full h-48 flex flex-col items-center">
-            {/* Beam */}
-            <div className={`absolute top-[60px] w-full h-2 bg-gray-500 rounded-full transition-transform duration-700 ease-in-out ${scaleTiltClass}`}>
-                {/* Player's Pan */}
-                <div className="absolute -left-12 -top-12 w-28 h-28 bg-brand-dark border-4 border-yellow rounded-full flex items-center justify-center shadow-lg shadow-yellow/20">
-                    <span className="text-5xl font-bold font-display text-yellow transition-opacity duration-300">
+        <p className="text-2xl h-8 mb-6 font-display tracking-wide text-gray-200">{localMessage}</p>
+        
+        <div className="relative w-full h-48 flex items-center justify-between max-w-2xl px-8">
+            {/* Player's Node */}
+            <div className={`relative w-32 h-32 flex items-center justify-center transition-transform duration-500 ${roundResult === 'player' ? 'scale-110' : ''}`}>
+                {/* FIX: Cast style object to allow CSS custom properties. */}
+                <div className={`absolute w-full h-full rounded-full bg-blue/20 animate-pulseGlow`} style={{'--glow-color': 'rgba(0,191,255,0.3)'} as React.CSSProperties}></div>
+                <div className="w-24 h-24 bg-brand-dark border-4 border-blue rounded-full flex items-center justify-center">
+                    <span className="text-5xl font-bold font-display text-blue transition-opacity duration-300">
                         {myChoiceThisRound !== 0 ? myChoiceThisRound : '?'}
                     </span>
                 </div>
-                {/* Opponent's Pan */}
-                <div className="absolute -right-12 -top-12 w-28 h-28 bg-brand-dark border-4 border-pink rounded-full flex items-center justify-center shadow-lg shadow-pink/20">
-                    <span className="text-5xl font-bold font-display text-pink transition-opacity duration-300">
+            </div>
+
+            {/* Central Prism */}
+            <div className="relative w-32 h-32 flex items-center justify-center">
+                 {/* FIX: Cast style object to allow CSS custom properties. */}
+                 <div className={`absolute w-full h-full rounded-full bg-yellow/20 animate-pulseGlow`} style={{'--glow-color': 'rgba(255,215,0,0.3)'} as React.CSSProperties}></div>
+                 <div className="w-28 h-28 bg-brand-dark border-4 border-yellow rounded-full flex items-center justify-center">
+                    <span className="text-6xl font-bold font-display text-yellow">{jackpotValue}</span>
+                 </div>
+            </div>
+
+            {/* Opponent's Node */}
+            <div className={`relative w-32 h-32 flex items-center justify-center transition-transform duration-500 ${roundResult === 'opponent' ? 'scale-110' : ''}`}>
+                {/* FIX: Cast style object to allow CSS custom properties. */}
+                <div className={`absolute w-full h-full rounded-full bg-pink/20 animate-pulseGlow`} style={{'--glow-color': 'rgba(255,20,147,0.3)'} as React.CSSProperties}></div>
+                <div className="w-24 h-24 bg-brand-dark border-4 border-pink rounded-full flex items-center justify-center">
+                     <span className="text-5xl font-bold font-display text-pink transition-opacity duration-300">
                         {opponentChoiceThisRound !== 0 ? opponentChoiceThisRound : '?'}
                     </span>
                 </div>
             </div>
             
-            {/* Fulcrum and Base */}
-            <div className="absolute top-[64px] w-4 h-12 bg-gray-500 z-[-1]" style={{ clipPath: 'polygon(0 0, 100% 0, 80% 100%, 20% 100%)' }} />
-            <div className="absolute top-[112px] w-48 h-16 bg-gray-700 rounded-b-xl border-x-4 border-b-4 border-gray-600 flex justify-center pt-2">
-                {currentRound !== -1 && currentRound < onChainState.roundNumbers.length && (
-                    <div className="w-24 h-24 absolute -top-12 bg-yellow rounded-full flex items-center justify-center text-brand-dark text-5xl font-bold font-display animate-pulseGlowYellow z-10 border-4 border-brand-dark">
-                        {onChainState.roundNumbers[currentRound]}
-                    </div>
-                )}
-            </div>
+            {/* Connecting Lines */}
+            <svg className="absolute top-0 left-0 w-full h-full z-[-1]" preserveAspectRatio="none">
+                <line x1="20%" y1="50%" x2="40%" y2="50%" stroke="url(#line-grad-blue)" strokeWidth="2" />
+                <line x1="60%" y1="50%" x2="80%" y2="50%" stroke="url(#line-grad-pink)" strokeWidth="2" />
+                <defs>
+                    <linearGradient id="line-grad-blue" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#00BFFF" />
+                        <stop offset="100%" stopColor="#FFD700" />
+                    </linearGradient>
+                    <linearGradient id="line-grad-pink" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#FFD700" />
+                        <stop offset="100%" stopColor="#FF1493" />
+                    </linearGradient>
+                </defs>
+            </svg>
         </div>
       </div>
       
-      <div className="w-full flex flex-col items-center">
-        <p className="mb-2 text-gray-200">Your Data Chips</p>
-        <div className="flex gap-2 justify-center">
+      {/* Player Controls */}
+      <div className="w-full flex flex-col items-center mt-6">
+        <p className="mb-4 text-gray-200 text-lg">Your Data Chips</p>
+        <div className="flex gap-3 justify-center">
           {[1, 2, 3, 4, 5].map(num => {
             const isUsed = !myPlayerState.nuggets.includes(num);
+            const isDisabled = isUsed || isProcessing || myPlayerState.choice !== 0;
             return (
               <button
                 key={num}
-                disabled={isUsed || isProcessing || myPlayerState.choice !== 0}
+                disabled={isDisabled}
                 onClick={() => handlePlayerChoice(num)}
-                className={`w-16 h-16 flex items-center justify-center font-bold text-2xl rounded-md transition-all duration-300 transform font-display border-2
+                className={`w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center font-bold text-2xl rounded-xl transition-all duration-300 transform font-display border-2
                   ${isUsed 
-                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-60 border-gray-700' 
-                    : (isProcessing || myPlayerState.choice !== 0)
-                    ? 'bg-yellow-dark text-gray-400 cursor-not-allowed border-yellow-dark'
-                    : 'bg-yellow-dark text-white hover:bg-yellow hover:text-brand-dark hover:scale-105 border-yellow-dark'
+                    ? 'bg-brand-gray text-gray-600 cursor-not-allowed opacity-50 border-gray-700' 
+                    : isDisabled
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed border-gray-700'
+                    : 'bg-glassmorphism text-white hover:bg-yellow hover:text-brand-dark hover:scale-110 hover:border-yellow border-blue/50'
                   }`}
               >
                 {num}
@@ -376,7 +415,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, betAmount, gamePubk
             );
           })}
         </div>
-         <div className="mt-6">
+         <div className="mt-8">
             <button
               onClick={onForfeit}
               className="text-pink-light hover:text-white bg-pink/20 hover:bg-pink/30 transition-colors p-2 px-4 rounded-lg"

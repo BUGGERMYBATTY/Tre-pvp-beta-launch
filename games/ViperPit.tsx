@@ -16,9 +16,11 @@ interface ViperPitProps {
   onRefreshBalance: () => void;
   onSetBalance: (newBalance: number) => void;
   isGuest: boolean;
+  nickname: string;
+  opponentNickname: string;
 }
 
-const ViperPit: React.FC<ViperPitProps> = ({ onExit, provider, connection, balance, onRefreshBalance, onSetBalance, isGuest }) => {
+const ViperPit: React.FC<ViperPitProps> = ({ onExit, provider, connection, balance, onRefreshBalance, onSetBalance, isGuest, nickname, opponentNickname }) => {
   const [screen, setScreen] = useState<Screen>(Screen.Betting);
   const [betAmount, setBetAmount] = useState(0.1);
   const [winnerId, setWinnerId] = useState<number | null>(null);
@@ -107,6 +109,8 @@ const ViperPit: React.FC<ViperPitProps> = ({ onExit, provider, connection, balan
             onGameOver={handleGameOver}
             betAmount={betAmount}
             onForfeit={handleForfeit}
+            nickname={nickname}
+            opponentNickname={opponentNickname}
           />
         );
       case Screen.Winner:

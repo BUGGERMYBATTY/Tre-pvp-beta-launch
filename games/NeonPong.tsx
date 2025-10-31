@@ -15,9 +15,11 @@ interface NeonPongProps {
   onRefreshBalance: () => void;
   isGuest: boolean;
   onSetBalance: (newBalance: number) => void;
+  nickname: string;
+  opponentNickname: string;
 }
 
-const NeonPong: React.FC<NeonPongProps> = ({ onExit, provider, connection, balance, onRefreshBalance, isGuest, onSetBalance }) => {
+const NeonPong: React.FC<NeonPongProps> = ({ onExit, provider, connection, balance, onRefreshBalance, isGuest, onSetBalance, nickname, opponentNickname }) => {
   const [screen, setScreen] = useState<Screen>(Screen.Betting);
   const [betAmount, setBetAmount] = useState(0.1);
   const [winnerId, setWinnerId] = useState<number | null>(null);
@@ -107,6 +109,8 @@ const NeonPong: React.FC<NeonPongProps> = ({ onExit, provider, connection, balan
             onGameOver={handleGameOver}
             betAmount={betAmount}
             onForfeit={handleForfeit}
+            nickname={nickname}
+            opponentNickname={opponentNickname}
           />
         );
       case Screen.Winner:

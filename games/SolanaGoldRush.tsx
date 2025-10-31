@@ -16,9 +16,11 @@ interface SolanaGoldRushProps {
   onRefreshBalance: () => void;
   isGuest: boolean;
   onSetBalance: (newBalance: number) => void;
+  nickname: string;
+  opponentNickname: string;
 }
 
-const SolanaGoldRush: React.FC<SolanaGoldRushProps> = ({ onExit, provider, connection, balance, onRefreshBalance, isGuest, onSetBalance }) => {
+const SolanaGoldRush: React.FC<SolanaGoldRushProps> = ({ onExit, provider, connection, balance, onRefreshBalance, isGuest, onSetBalance, nickname, opponentNickname }) => {
   const [screen, setScreen] = useState<Screen>(Screen.Betting);
   const [betAmount, setBetAmount] = useState(0.1);
   const [winnerId, setWinnerId] = useState<number | null>(null);
@@ -112,6 +114,8 @@ const SolanaGoldRush: React.FC<SolanaGoldRushProps> = ({ onExit, provider, conne
             connection={connection}
             onForfeit={handleForfeit}
             isGuest={isGuest}
+            nickname={nickname}
+            opponentNickname={opponentNickname}
           />
         );
       case Screen.Winner:
