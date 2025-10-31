@@ -1,0 +1,15 @@
+# Netlify Build Settings for a Vite-based React SPA
+[build]
+  # This command tells Netlify to run your 'build' script from package.json
+  command = "npm run build"
+  
+  # This is the directory where the built, optimized site will be placed
+  publish = "dist"
+
+# This is a crucial rule for Single Page Applications (SPAs) like yours.
+# It ensures that any direct navigation to a URL like /leaderboard or /token
+# still serves your main index.html file, allowing your React router to handle it.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
