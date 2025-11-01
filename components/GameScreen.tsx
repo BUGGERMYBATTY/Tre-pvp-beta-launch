@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 // FIX: Renamed GoldRushGameState to GameState to match what is returned from getGameState.
 import { GameState, GameType } from '../types.ts';
 // FIX: Changed import from non-existent 'resolveGameOnChain' to 'resolveGameGoldRushOnChain'.
-import { playRoundOnChain, getGameState, resolveGameGoldRushOnChain } from '../program-client.ts';
+import { playRoundOnChain, getGameState, resolveGameOnChain } from '../program-client.ts';
 
 const { PublicKey } = (window as any).solanaWeb3;
 
@@ -225,7 +225,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, betAmount, gamePubk
             setLocalMessage('All rounds complete! Calculating winner...');
             setIsProcessing(true);
 
-            const resolveGame = async () => {
+            const resolve = async () => {
                 if (isGuest) {
                     const myScore = calculateScore(myChoices, opponentChoices, onChainState.roundNumbers);
                     const opponentScore = calculateScore(opponentChoices, myChoices, onChainState.roundNumbers);
@@ -237,9 +237,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, betAmount, gamePubk
 
                 } else {
                     try {
-                        const playerOne = new PublicKey(onChainState.players[0]);
-                        const playerTwo = new PublicKey(onChainState.players[1]);
-                        await resolveGameGoldRushOnChain(connection, provider, gamePubkey, playerOne, playerTwo);
+                        await resolveGameOnChain(connection, provider, gamePubkey);
                     } catch (error) {
                         console.error("Failed to resolve game:", error);
                         setLocalMessage('Error calculating winner.');
@@ -252,7 +250,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ onGameOver, betAmount, gamePubk
             // Delay resolution to allow players to see the final round result
             setTimeout(() => {
               if (isGuest || isPlayerOne) {
-                  resolveGame();
+                  resolve();
               }
             }, 2000);
         }

@@ -130,32 +130,18 @@ export const playRoundOnChain = async (connection: any, provider: any, gamePubke
     .rpc();
 };
 
-export const resolveGameGoldRushOnChain = async (connection: any, provider: any, gamePubkey: PublicKeyType, playerOne: PublicKeyType, playerTwo: PublicKeyType): Promise<void> => {
-    const program = getProgram(connection, provider);
-    await program.methods
-        .resolveGameGoldRush()
-        .accounts({
-            game: gamePubkey,
-            playerOne,
-            playerTwo,
-            signer: provider.publicKey,
-        })
-        .rpc();
-};
-
-export const reportWinnerOnChain = async (connection: any, provider: any, gamePubkey: PublicKeyType, winnerPk: PublicKeyType): Promise<void> => {
+export const resolveGameOnChain = async (connection: any, provider: any, gamePubkey: PublicKeyType): Promise<void> => {
     const program = getProgram(connection, provider);
     const state = await getGameState(connection, gamePubkey);
     const playerOne = new PublicKey(state.players[0]);
     const playerTwo = new PublicKey(state.players[1]);
 
     await program.methods
-        .reportWinnerAndResolve(winnerPk)
+        .resolveGame()
         .accounts({
             game: gamePubkey,
             playerOne,
             playerTwo,
-            signer: provider.publicKey,
         })
         .rpc();
 };
