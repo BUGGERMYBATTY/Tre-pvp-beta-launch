@@ -62,7 +62,39 @@ pub mod truepvp_backend {
     }
 
     pub fn resolve_game(ctx: Context<ResolveGame>) -> Result<()> {
-        // Game resolution logic will be implemented here.
+        let game = &mut ctx.accounts.game;
+        require!(!game.is_over, GameError::GameAlreadyOver);
+
+        let mut player_one_score = 0;
+        let mut player_two_score = 0;
+
+        for i in 0..5 {
+            if game.player_one_choices[i] > game.player_two_choices[i] {
+                player_one_score += 1;
+            } else if game.player_two_choices[i] > game.player_one_choices[i] {
+                player_two_score += 1;
+            }
+        }
+
+        let winner_pubkey = if player_one_score > player_two_score {
+            game.players[0]
+        } else {
+            game.players[1]
+        };
+
+        game.winner = winner_pubkey;
+        game.is_over = true;
+
+        let winner_account_info = if winner_pubkey == ctx.accounts.player_one.key() {
+            &ctx.accounts.player_one
+        } else {
+            &ctx.accounts.player_two
+        };
+
+        let total_wager = game.wager_amount * 2;
+        **game.to_account_info().try_borrow_mut_lamports()? -= total_wager;
+        **winner_account_info.try_borrow_mut_lamports()? += total_wager;
+
         Ok(())
     }
 }

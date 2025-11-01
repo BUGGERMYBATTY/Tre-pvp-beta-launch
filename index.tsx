@@ -3,6 +3,7 @@ import './polyfills';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './src/index.css';
 // FIX: Added file extension to import to resolve module error.
 import App from './App.tsx';
 
